@@ -1,0 +1,9 @@
+Django>=4.2,<5.0
+djangorestframework>=3.14
+psycopg2-binary>=2.9            # PostgreSQL driver
+python-dotenv>=0.21            # (optional) to load env vars
+twilio>=8.0                    # (if using Twilio for WhatsApp)
+drf-yasg==1.21.10                 # (optional) auto-generate Swagger/OpenAPI
+Pillow
+drf_spectacular
+
