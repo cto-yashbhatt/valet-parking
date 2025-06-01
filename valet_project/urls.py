@@ -17,10 +17,15 @@ Including another URLconf
 # valet_project/urls.py
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Frontend UI
+    path('', include('frontend.urls')),
 
     # Accounts (registration, login, logout) can be handled here or via DRF’s token endpoints.
     path('api-auth/', include('rest_framework.urls')),
@@ -43,3 +48,8 @@ urlpatterns = [
         name='swagger-ui'
     ),
 ]
+
+# Serve static and media files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

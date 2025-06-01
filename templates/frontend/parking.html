@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+
+{% block title %}Parking Management - Valet Parking System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-parking"></i> Parking Management</h1>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSlotModal">
+                    <i class="fas fa-plus"></i> Add New Slot
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="alerts"></div>
+    
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <select class="form-select" id="companyFilter">
+                <option value="">All Companies</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="statusFilter">
+                <option value="">All Statuses</option>
+                <option value="available">Available</option>
+                <option value="occupied">Occupied</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search slots...">
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-outline-secondary" onclick="refreshSlots()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+    
+    <!-- Parking Slots Grid -->
+    <div class="row" id="slotsContainer">
+        <div class="col-12 text-center">
+            <div class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Loading parking slots...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Slot Modal -->
+<div class="modal fade" id="addSlotModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Add New Parking Slot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addSlotForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="slotName" class="form-label">Slot Name</label>
+                        <input type="text" class="form-control" id="slotName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="slotDivision" class="form-label">Division</label>
+                        <input type="text" class="form-control" id="slotDivision" name="division" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="slotCompany" class="form-label">Company</label>
+                        <select class="form-select" id="slotCompany" name="company" required>
+                            <option value="">Select Company</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="slotActive" name="is_active" checked>
+                        <label class="form-check-label" for="slotActive">
+                            Active
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Create Slot
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Slot Details Modal -->
+<div class="modal fade" id="slotDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Slot Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="slotDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editSlotBtn">
+                    <i class="fas fa-edit"></i> Edit Slot
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allSlots = [];
+let allCompanies = [];
+
+async function loadParkingSlots() {
+    try {
+        const slots = await apiRequest('/api/parking/slots/');
+        allSlots = slots;
+        renderSlots(slots);
+    } catch (error) {
+        console.error('Failed to load parking slots:', error);
+        showAlert('Failed to load parking slots', 'danger');
+    }
+}
+
+async function loadCompanies() {
+    try {
+        const companies = await apiRequest('/api/companies/');
+        allCompanies = companies;
+        
+        // Populate company filters and selects
+        const companyFilter = document.getElementById('companyFilter');
+        const slotCompany = document.getElementById('slotCompany');
+        
+        companies.forEach(company => {
+            const option1 = new Option(company.name, company.id);
+            const option2 = new Option(company.name, company.id);
+            companyFilter.add(option1);
+            slotCompany.add(option2);
+        });
+    } catch (error) {
+        console.error('Failed to load companies:', error);
+    }
+}
+
+function renderSlots(slots) {
+    const container = document.getElementById('slotsContainer');
+    
+    if (slots.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center">
+                <div class="py-5">
+                    <i class="fas fa-parking fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No parking slots found</h4>
+                    <p class="text-muted">Create your first parking slot to get started</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    const slotsHTML = slots.map(slot => `
+        <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">${slot.name}</h5>
+                        ${getStatusBadge(slot.is_occupied ? 'occupied' : 'available')}
+                    </div>
+                    <p class="card-text text-muted mb-2">
+                        <i class="fas fa-building"></i> ${getCompanyName(slot.company)}<br>
+                        <i class="fas fa-map-marker-alt"></i> ${slot.division}
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i> ${new Date(slot.created_at).toLocaleDateString()}
+                        </small>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewSlotDetails('${slot.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="generateQR('${slot.id}')">
+                                <i class="fas fa-qrcode"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = slotsHTML;
+}
+
+function getCompanyName(companyId) {
+    const company = allCompanies.find(c => c.id === companyId);
+    return company ? company.name : 'Unknown';
+}
+
+function viewSlotDetails(slotId) {
+    const slot = allSlots.find(s => s.id === slotId);
+    if (!slot) return;
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Basic Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${slot.name}</td></tr>
+                    <tr><td><strong>Division:</strong></td><td>${slot.division}</td></tr>
+                    <tr><td><strong>Company:</strong></td><td>${getCompanyName(slot.company)}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td>${getStatusBadge(slot.is_occupied ? 'occupied' : 'available')}</td></tr>
+                    <tr><td><strong>Active:</strong></td><td>${slot.is_active ? 'Yes' : 'No'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>QR Code</h6>
+                <div class="qr-code-container">
+                    ${slot.qr_code_image ? 
+                        `<img src="${slot.qr_code_image}" alt="QR Code" class="img-fluid">` : 
+                        '<p class="text-muted">No QR code generated</p>'
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('slotDetailsContent').innerHTML = content;
+    new bootstrap.Modal(document.getElementById('slotDetailsModal')).show();
+}
+
+function generateQR(slotId) {
+    showAlert('QR code generation feature coming soon!', 'info');
+}
+
+function refreshSlots() {
+    loadParkingSlots();
+}
+
+// Form submission
+document.getElementById('addSlotForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const slotData = Object.fromEntries(formData);
+    slotData.is_active = document.getElementById('slotActive').checked;
+    
+    try {
+        await apiRequest('/api/parking/slots/', {
+            method: 'POST',
+            body: JSON.stringify(slotData),
+        });
+        
+        showAlert('Parking slot created successfully!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('addSlotModal')).hide();
+        e.target.reset();
+        loadParkingSlots();
+    } catch (error) {
+        showAlert('Failed to create parking slot', 'danger');
+    }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadCompanies();
+    loadParkingSlots();
+});
+</script>
+{% endblock %}

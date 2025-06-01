@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Welcome - Valet Parking System{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <h1><i class="fas fa-car"></i> Valet Parking System</h1>
+                <p class="lead">Streamline your parking operations with our intelligent valet parking management system. Handle customer requests via WhatsApp and manage your parking slots efficiently.</p>
+                <div class="mt-4">
+                    <a href="{% url 'frontend:login' %}" class="btn btn-light btn-lg me-3">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                    <a href="{% url 'frontend:register' %}" class="btn btn-outline-light btn-lg">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="display-5 fw-bold">Why Choose Our System?</h2>
+                <p class="lead text-muted">Modern solutions for modern parking challenges</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="text-primary mb-3">
+                            <i class="fab fa-whatsapp fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">WhatsApp Integration</h5>
+                        <p class="card-text">Customers can request parking and retrieval directly through WhatsApp. No app downloads required!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="text-success mb-3">
+                            <i class="fas fa-qrcode fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">QR Code System</h5>
+                        <p class="card-text">Each parking slot has a unique QR code. Customers scan to identify their desired parking location.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 text-center">
+                    <div class="card-body">
+                        <div class="text-info mb-3">
+                            <i class="fas fa-tachometer-alt fa-3x"></i>
+                        </div>
+                        <h5 class="card-title">Real-time Dashboard</h5>
+                        <p class="card-text">Monitor all parking activities in real-time. Track transactions, manage slots, and oversee operations.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="row text-center mb-5">
+            <div class="col-lg-8 mx-auto">
+                <h2 class="display-5 fw-bold">How It Works</h2>
+                <p class="lead text-muted">Simple steps for seamless parking</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-3 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">1</span>
+                    </div>
+                </div>
+                <h5>Scan QR Code</h5>
+                <p class="text-muted">Customer scans the QR code at their desired parking slot</p>
+            </div>
+            
+            <div class="col-md-3 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">2</span>
+                    </div>
+                </div>
+                <h5>Send WhatsApp</h5>
+                <p class="text-muted">Send parking request via WhatsApp with car details</p>
+            </div>
+            
+            <div class="col-md-3 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">3</span>
+                    </div>
+                </div>
+                <h5>Valet Service</h5>
+                <p class="text-muted">Valet attendant parks the car and confirms via system</p>
+            </div>
+            
+            <div class="col-md-3 text-center">
+                <div class="mb-3">
+                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <span class="fw-bold">4</span>
+                    </div>
+                </div>
+                <h5>Retrieve Car</h5>
+                <p class="text-muted">Customer requests car retrieval and receives it promptly</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h2 class="display-5 fw-bold">Ready to Get Started?</h2>
+                <p class="lead text-muted mb-4">Join hundreds of businesses already using our valet parking system</p>
+                <a href="{% url 'frontend:register' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i> Start Free Trial
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

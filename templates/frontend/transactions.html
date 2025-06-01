@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+
+{% block title %}Transactions - Valet Parking System{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="fas fa-exchange-alt"></i> Parking Transactions</h1>
+                <button class="btn btn-outline-secondary" onclick="refreshTransactions()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="alerts"></div>
+    
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <select class="form-select" id="statusFilter">
+                <option value="">All Statuses</option>
+                <option value="pending_park">Pending Park</option>
+                <option value="parked">Parked</option>
+                <option value="pending_retrieve">Pending Retrieve</option>
+                <option value="delivered">Delivered</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="date" class="form-control" id="dateFilter">
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control" id="searchInput" placeholder="Search by plate number...">
+        </div>
+        <div class="col-md-3">
+            <button class="btn btn-primary" onclick="applyFilters()">
+                <i class="fas fa-filter"></i> Apply Filters
+            </button>
+        </div>
+    </div>
+    
+    <!-- Transactions Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> All Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div id="transactionsLoading" class="loading">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="transactionsTable" style="display: none;">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Customer</th>
+                                    <th>Plate Number</th>
+                                    <th>Slot</th>
+                                    <th>Status</th>
+                                    <th>Requested</th>
+                                    <th>Parked</th>
+                                    <th>Delivered</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noTransactions" class="text-center text-muted py-4" style="display: none;">
+                        <i class="fas fa-inbox fa-3x mb-3"></i>
+                        <p>No transactions found</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Details Modal -->
+<div class="modal fade" id="transactionDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="transactionDetailsContent">
+                <!-- Content will be loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <div id="transactionActions">
+                    <!-- Action buttons will be added dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allTransactions = [];
+
+async function loadTransactions() {
+    try {
+        document.getElementById('transactionsLoading').style.display = 'block';
+        document.getElementById('transactionsTable').style.display = 'none';
+        document.getElementById('noTransactions').style.display = 'none';
+
+        // Load transactions from API
+        const transactions = await apiRequest('/api/parking/transactions/');
+        allTransactions = transactions;
+
+        renderTransactions(allTransactions);
+
+        document.getElementById('transactionsLoading').style.display = 'none';
+        if (allTransactions.length === 0) {
+            document.getElementById('noTransactions').style.display = 'block';
+        } else {
+            document.getElementById('transactionsTable').style.display = 'table';
+        }
+    } catch (error) {
+        console.error('Failed to load transactions:', error);
+        showAlert('Failed to load transactions', 'danger');
+        document.getElementById('transactionsLoading').style.display = 'none';
+        document.getElementById('noTransactions').style.display = 'block';
+    }
+}
+
+function renderTransactions(transactions) {
+    const tbody = document.getElementById('transactionsBody');
+    
+    if (transactions.length === 0) {
+        return;
+    }
+    
+    const transactionsHTML = transactions.map(transaction => `
+        <tr>
+            <td><code>${transaction.id.substring(0, 8)}...</code></td>
+            <td>${transaction.customer ? transaction.customer.phone_number : 'N/A'}</td>
+            <td><strong>${transaction.plate_number}</strong></td>
+            <td>${transaction.slot ? transaction.slot.name : 'N/A'}</td>
+            <td>${getStatusBadge(transaction.status)}</td>
+            <td>${transaction.requested_at ? new Date(transaction.requested_at).toLocaleString() : 'N/A'}</td>
+            <td>${transaction.parked_at ? new Date(transaction.parked_at).toLocaleString() : '-'}</td>
+            <td>${transaction.delivered_at ? new Date(transaction.delivered_at).toLocaleString() : '-'}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary" onclick="viewTransactionDetails('${transaction.id}')">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    ${getActionButton(transaction)}
+                </div>
+            </td>
+        </tr>
+    `).join('');
+    
+    tbody.innerHTML = transactionsHTML;
+}
+
+function getActionButton(transaction) {
+    switch (transaction.status) {
+        case 'pending_park':
+            return `<button class="btn btn-outline-success" onclick="markAsParked('${transaction.id}')">
+                        <i class="fas fa-check"></i> Park
+                    </button>`;
+        case 'parked':
+            return `<button class="btn btn-outline-warning" onclick="markAsRetrieving('${transaction.id}')">
+                        <i class="fas fa-car"></i> Retrieve
+                    </button>`;
+        case 'pending_retrieve':
+            return `<button class="btn btn-outline-info" onclick="markAsDelivered('${transaction.id}')">
+                        <i class="fas fa-check-circle"></i> Deliver
+                    </button>`;
+        default:
+            return '';
+    }
+}
+
+function viewTransactionDetails(transactionId) {
+    const transaction = allTransactions.find(t => t.id === transactionId);
+    if (!transaction) {
+        showAlert('Transaction not found', 'danger');
+        return;
+    }
+    
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Transaction Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td><code>${transaction.id}</code></td></tr>
+                    <tr><td><strong>Status:</strong></td><td>${getStatusBadge(transaction.status)}</td></tr>
+                    <tr><td><strong>Plate Number:</strong></td><td><strong>${transaction.plate_number}</strong></td></tr>
+                    <tr><td><strong>Slot:</strong></td><td>${transaction.slot ? transaction.slot.name : 'N/A'}</td></tr>
+                    <tr><td><strong>Ticket Code:</strong></td><td>${transaction.ticket_code || 'N/A'}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Timeline</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Requested:</strong></td><td>${transaction.requested_at ? new Date(transaction.requested_at).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td><strong>Parked:</strong></td><td>${transaction.parked_at ? new Date(transaction.parked_at).toLocaleString() : '-'}</td></tr>
+                    <tr><td><strong>Retrieve Requested:</strong></td><td>${transaction.retrieve_requested_at ? new Date(transaction.retrieve_requested_at).toLocaleString() : '-'}</td></tr>
+                    <tr><td><strong>Delivered:</strong></td><td>${transaction.delivered_at ? new Date(transaction.delivered_at).toLocaleString() : '-'}</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        ${transaction.customer ? `
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6>Customer Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Phone:</strong></td><td>${transaction.customer.phone_number}</td></tr>
+                    <tr><td><strong>Name:</strong></td><td>${transaction.customer.name || 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+        ` : ''}
+    `;
+    
+    document.getElementById('transactionDetailsContent').innerHTML = content;
+    
+    // Add action buttons
+    const actionsContainer = document.getElementById('transactionActions');
+    actionsContainer.innerHTML = getActionButton(transaction);
+    
+    new bootstrap.Modal(document.getElementById('transactionDetailsModal')).show();
+}
+
+async function markAsParked(transactionId) {
+    if (confirm('Mark this transaction as parked?')) {
+        try {
+            await updateTransactionStatus(transactionId, 'parked');
+            showAlert('Transaction marked as parked!', 'success');
+            loadTransactions(); // Refresh the list
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+        }
+    }
+}
+
+async function markAsRetrieving(transactionId) {
+    if (confirm('Mark this car as ready for retrieval?')) {
+        try {
+            await updateTransactionStatus(transactionId, 'pending_retrieve');
+            showAlert('Car marked as ready for retrieval!', 'success');
+            loadTransactions(); // Refresh the list
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+        }
+    }
+}
+
+async function markAsDelivered(transactionId) {
+    if (confirm('Mark this transaction as delivered?')) {
+        try {
+            await updateTransactionStatus(transactionId, 'delivered');
+            showAlert('Transaction marked as delivered!', 'success');
+            loadTransactions(); // Refresh the list
+        } catch (error) {
+            console.error('Failed to update transaction:', error);
+        }
+    }
+}
+
+function refreshTransactions() {
+    loadTransactions();
+}
+
+function applyFilters() {
+    // For now, just reload - in a real implementation, you'd filter the data
+    loadTransactions();
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadTransactions();
+    
+    // Set today's date as default
+    document.getElementById('dateFilter').value = new Date().toISOString().split('T')[0];
+});
+</script>
+{% endblock %}
