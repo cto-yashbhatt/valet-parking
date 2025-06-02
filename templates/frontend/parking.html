@@ -76,9 +76,8 @@
                     
                     <div class="mb-3">
                         <label for="slotCompany" class="form-label">Company</label>
-                        <select class="form-select" id="slotCompany" name="company" required>
-                            <option value="">Select Company</option>
-                        </select>
+                        <input type="text" class="form-control" id="slotCompany" readonly>
+                        <div class="form-text">Automatically assigned to your company</div>
                     </div>
                     
                     <div class="form-check">
@@ -139,21 +138,25 @@ async function loadParkingSlots() {
 
 async function loadCompanies() {
     try {
-        const companies = await apiRequest('/api/companies/');
-        allCompanies = companies;
-        
-        // Populate company filters and selects
-        const companyFilter = document.getElementById('companyFilter');
-        const slotCompany = document.getElementById('slotCompany');
-        
-        companies.forEach(company => {
-            const option1 = new Option(company.name, company.id);
-            const option2 = new Option(company.name, company.id);
-            companyFilter.add(option1);
-            slotCompany.add(option2);
-        });
+        // Get user's company from localStorage
+        const company = JSON.parse(localStorage.getItem('company') || '{}');
+
+        if (company.name) {
+            allCompanies = [company];
+
+            // Populate company filter and display
+            const companyFilter = document.getElementById('companyFilter');
+            const slotCompany = document.getElementById('slotCompany');
+
+            // Add company to filter
+            const option = new Option(company.name, company.id);
+            companyFilter.add(option);
+
+            // Set company name in the form (readonly)
+            slotCompany.value = company.name;
+        }
     } catch (error) {
-        console.error('Failed to load companies:', error);
+        console.error('Failed to load company info:', error);
     }
 }
 
@@ -254,20 +257,30 @@ function refreshSlots() {
 // Form submission
 document.getElementById('addSlotForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
     const slotData = Object.fromEntries(formData);
     slotData.is_active = document.getElementById('slotActive').checked;
-    
+
+    // Remove company from data since it's handled automatically by the backend
+    delete slotData.company;
+
     try {
         await apiRequest('/api/parking/slots/', {
             method: 'POST',
             body: JSON.stringify(slotData),
         });
-        
+
         showAlert('Parking slot created successfully!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('addSlotModal')).hide();
         e.target.reset();
+
+        // Reset company name in form
+        const company = JSON.parse(localStorage.getItem('company') || '{}');
+        if (company.name) {
+            document.getElementById('slotCompany').value = company.name;
+        }
+
         loadParkingSlots();
     } catch (error) {
         showAlert('Failed to create parking slot', 'danger');

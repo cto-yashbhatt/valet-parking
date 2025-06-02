@@ -4,10 +4,13 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from core.models import CoreUser
 from companies.models import Company, EmployeeProfile
 import uuid
+import json
 
 # Create your views here.
 
@@ -153,3 +156,136 @@ def register_employee(request):
     except Exception as e:
         return Response({'message': f'Registration failed: {str(e)}'},
                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_user(request):
+    """Login user and create session"""
+    try:
+        data = request.data
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return Response({'message': 'Username and password are required'},
+                          status=status.HTTP_400_BAD_REQUEST)
+
+        # Authenticate user
+        user = authenticate(request, username=username, password=password)
+
+        if user is not None:
+            # Login user (creates session)
+            login(request, user)
+
+            # Get user's company info if they're an employee
+            company_info = None
+            if user.role == CoreUser.Role.EMPLOYEE:
+                try:
+                    employee_profile = EmployeeProfile.objects.get(user=user)
+                    company_info = {
+                        'id': employee_profile.company.id,
+                        'name': employee_profile.company.name,
+                        'code': employee_profile.company.company_code
+                    }
+                except EmployeeProfile.DoesNotExist:
+                    pass
+            elif user.role == CoreUser.Role.COMPANY_ADMIN:
+                try:
+                    company = Company.objects.get(admin_user=user)
+                    company_info = {
+                        'id': company.id,
+                        'name': company.name,
+                        'code': company.company_code
+                    }
+                except Company.DoesNotExist:
+                    pass
+
+            return Response({
+                'message': 'Login successful',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name,
+                    'role': user.role
+                },
+                'company': company_info
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({'message': 'Invalid username or password'},
+                          status=status.HTTP_401_UNAUTHORIZED)
+
+    except Exception as e:
+        return Response({'message': f'Login failed: {str(e)}'},
+                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Temporarily allow any for debugging
+def debug_user_info(request):
+    """Debug endpoint to check user's company association"""
+    from core.permissions import get_user_company
+
+    user = request.user
+    user_company = get_user_company(user)
+
+    # Get employee profile if exists
+    employee_profile = None
+    if user.role == CoreUser.Role.EMPLOYEE:
+        try:
+            employee_profile = EmployeeProfile.objects.get(user=user)
+        except EmployeeProfile.DoesNotExist:
+            pass
+
+    # Get admin company if exists
+    admin_company = None
+    if user.role == CoreUser.Role.COMPANY_ADMIN:
+        try:
+            admin_company = Company.objects.get(admin_user=user)
+        except Company.DoesNotExist:
+            pass
+
+    return Response({
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'role': user.role,
+            'is_authenticated': user.is_authenticated
+        },
+        'user_company': {
+            'id': user_company.id if user_company else None,
+            'name': user_company.name if user_company else None,
+            'code': user_company.company_code if user_company else None
+        } if user_company else None,
+        'employee_profile': {
+            'id': employee_profile.id if employee_profile else None,
+            'company_id': employee_profile.company.id if employee_profile else None,
+            'company_name': employee_profile.company.name if employee_profile else None
+        } if employee_profile else None,
+        'admin_company': {
+            'id': admin_company.id if admin_company else None,
+            'name': admin_company.name if admin_company else None
+        } if admin_company else None
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def logout_user(request):
+    """Logout user and clear session"""
+    try:
+        if request.user.is_authenticated:
+            logout(request)
+            return Response({
+                'message': 'Logout successful'
+            }, status=status.HTTP_200_OK)
+        else:
+            return Response({
+                'message': 'User not authenticated'
+            }, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({
+            'message': f'Logout failed: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

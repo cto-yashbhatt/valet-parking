@@ -16,6 +16,7 @@
                 <div id="alerts"></div>
                 
                 <form id="loginForm">
+                    {% csrf_token %}
                     <div class="mb-3">
                         <label for="username" class="form-label">Username</label>
                         <div class="input-group">
@@ -78,23 +79,33 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
     submitBtn.disabled = true;
     
     try {
-        // Use Django's built-in authentication
-        const response = await fetch('/api-auth/login/', {
+        // Use our custom authentication API
+        const response = await fetch('/api/auth/login/', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
+                'Content-Type': 'application/json',
                 'X-CSRFToken': getCookie('csrftoken')
             },
-            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
         });
-        
+
+        const data = await response.json();
+
         if (response.ok) {
             showAlert('Login successful! Redirecting...', 'success');
+            // Store user info in localStorage for the frontend
+            localStorage.setItem('user', JSON.stringify(data.user));
+            if (data.company) {
+                localStorage.setItem('company', JSON.stringify(data.company));
+            }
             setTimeout(() => {
                 window.location.href = '/dashboard/';
             }, 1000);
         } else {
-            showAlert('Invalid username or password', 'danger');
+            showAlert(data.message || 'Invalid username or password', 'danger');
         }
     } catch (error) {
         console.error('Login error:', error);

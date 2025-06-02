@@ -16,6 +16,7 @@
                 <div id="alerts"></div>
                 
                 <form id="registerEmployeeForm">
+                    {% csrf_token %}
                     <!-- Company Code -->
                     <div class="card mb-4">
                         <div class="card-header">
@@ -181,8 +182,8 @@ document.getElementById('registerEmployeeForm').addEventListener('submit', async
         return;
     }
     
-    // Add verified company ID
-    data.company_id = verifiedCompany.id;
+    // Remove confirm_password and add company_code
+    delete data.confirm_password;
     
     // Show loading state
     const submitBtn = e.target.querySelector('button[type="submit"]');

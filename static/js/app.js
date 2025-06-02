@@ -11,6 +11,8 @@ const API_ENDPOINTS = {
 
 // Global variables
 let authToken = localStorage.getItem('authToken');
+let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+let currentCompany = JSON.parse(localStorage.getItem('company') || '{}');
 
 // Utility Functions
 function showLoading(elementId) {
@@ -55,20 +57,24 @@ async function apiRequest(url, options = {}) {
             'Content-Type': 'application/json',
         },
     };
-    
-    if (authToken) {
-        defaultOptions.headers['Authorization'] = `Token ${authToken}`;
+
+    // Add CSRF token for POST, PUT, PATCH, DELETE requests
+    if (options.method && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method.toUpperCase())) {
+        defaultOptions.headers['X-CSRFToken'] = getCookie('csrftoken');
     }
-    
+
+    // Include credentials for session-based authentication
+    defaultOptions.credentials = 'include';
+
     const finalOptions = { ...defaultOptions, ...options };
-    
+
     try {
         const response = await fetch(url, finalOptions);
-        
+
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         return await response.json();
     } catch (error) {
         console.error('API request failed:', error);
@@ -101,10 +107,42 @@ async function login(username, password) {
     }
 }
 
-function logout() {
-    authToken = null;
-    localStorage.removeItem('authToken');
-    window.location.href = '/login/';
+async function logout() {
+    try {
+        // Call backend logout endpoint to clear session
+        await fetch('/api/auth/logout/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+    } finally {
+        // Clear frontend storage regardless of backend response
+        authToken = null;
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        localStorage.removeItem('company');
+        window.location.href = '/login/';
+    }
+}
+
+// Function to get CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
 }
 
 // Data Loading Functions
