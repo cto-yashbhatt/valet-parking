@@ -27,6 +27,9 @@ urlpatterns = [
     # Frontend UI
     path('', include('frontend.urls')),
 
+    # Authentication endpoints
+    path('api/auth/', include('authentication.urls')),
+
     # Accounts (registration, login, logout) can be handled here or via DRF’s token endpoints.
     path('api-auth/', include('rest_framework.urls')),
 

@@ -19,6 +19,16 @@ def register_view(request):
     """Registration page"""
     return render(request, 'frontend/register.html')
 
+
+def register_company_view(request):
+    """Company registration page"""
+    return render(request, 'frontend/register_company.html')
+
+
+def register_employee_view(request):
+    """Employee registration page"""
+    return render(request, 'frontend/register_employee.html')
+
 @login_required
 def dashboard(request):
     """Main dashboard - different views based on user role"""

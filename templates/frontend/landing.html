@@ -14,9 +14,19 @@
                     <a href="{% url 'frontend:login' %}" class="btn btn-light btn-lg me-3">
                         <i class="fas fa-sign-in-alt"></i> Login
                     </a>
-                    <a href="{% url 'frontend:register' %}" class="btn btn-outline-light btn-lg">
-                        <i class="fas fa-user-plus"></i> Register
-                    </a>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-outline-light btn-lg dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-plus"></i> Register
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'frontend:register_company' %}">
+                                <i class="fas fa-building"></i> Register Company
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'frontend:register_employee' %}">
+                                <i class="fas fa-user"></i> Join as Employee
+                            </a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

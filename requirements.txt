@@ -6,4 +6,6 @@ twilio>=8.0                    # (if using Twilio for WhatsApp)
 drf-yasg==1.21.10                 # (optional) auto-generate Swagger/OpenAPI
 Pillow
 drf_spectacular
+gunicorn>=20.1.0               # WSGI HTTP Server for production
+redis>=4.0.0                   # Redis client for caching
 
